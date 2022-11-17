@@ -5,42 +5,66 @@ import (
 	"log"
 	"os"
 
+	"github.com/fbriansyah/app-management/server/model"
+	"github.com/fbriansyah/app-management/server/route"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
-func runServer() {
+func runServer(db *gorm.DB) {
 	r := gin.Default()
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
+
+	route.Routing(r, db)
+
 	r.Run()
 }
 
-func migrate(mode string) {
+func migrate(mode string, db *gorm.DB) {
 	// function call migration script (create/delete table).
 	switch mode {
-	case "up":
-		fmt.Println("Migrate Up")
+	case "init":
+		// create assosiative table with migration
+		model.Init(db)
 	case "down":
 		fmt.Println("Migrate Down")
 	default:
-		log.Fatalln("\nUnknown mode. Mode available: \n\t- up (init database) \n\t- down (delete data in database)")
+		log.Fatalln("\nUnknown mode. Mode available: \n\t- init (init database) \n\t- down (delete data in database)")
 	}
 }
 
-func main() {
-	command := ""
+func initDB(env map[string]string) *gorm.DB {
+	host := env["DB_HOST"]
+	port := env["DB_PORT"]
+	user := env["DB_USERNAME"]
+	pass := env["DB_PASSWORD"]
+	dbname := env["DB_DATABASE"]
 
-	// load .env data
-	err := godotenv.Load()
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", user, pass, host, port, dbname)
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		panic(err)
 	}
 
+	return db
+}
+
+func main() {
+
+	// load .env data
+	var envData map[string]string
+	envData, err := godotenv.Read()
+	if err != nil {
+		panic(err)
+	}
+
+	// init database
+	db := initDB(envData)
+
 	// set default command
+	command := ""
 	if len(os.Args) > 1 {
 		command = os.Args[1]
 	} else {
@@ -50,13 +74,13 @@ func main() {
 	switch command {
 	case "migrate":
 		if len(os.Args) > 2 {
-			migrate(os.Args[2])
+			migrate(os.Args[2], db)
 		} else {
-			migrate("up")
+			migrate("up", db)
 		}
 	case "serve":
 		fallthrough
 	default:
-		runServer()
+		runServer(db)
 	}
 }
