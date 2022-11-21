@@ -80,7 +80,9 @@ func main() {
 		}
 	case "serve":
 		fallthrough
-	default:
+	case "":
 		runServer(db)
+	default:
+		fmt.Println("Unknown command: " + command)
 	}
 }
