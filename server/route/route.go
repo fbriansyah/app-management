@@ -20,6 +20,7 @@ func Routing(r *gin.Engine, db *gorm.DB) {
 		userGrp := apiGrp.Group("/user")
 		{
 			userCtrl := controllers.UserCtrl{DB: db}
+
 			userGrp.GET("/", userCtrl.Get)
 			userGrp.POST("/", userCtrl.Store)
 		}
@@ -27,6 +28,7 @@ func Routing(r *gin.Engine, db *gorm.DB) {
 		authGrp := apiGrp.Group("/auth")
 		{
 			authCtrl := controllers.AuthCtrl{DB: db}
+
 			authGrp.POST("/register", authCtrl.Register)
 			authGrp.POST("/login", authCtrl.Login)
 		}

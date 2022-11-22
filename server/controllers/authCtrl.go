@@ -29,11 +29,13 @@ func (ac *AuthCtrl) Register(ctx *gin.Context) {
 		ac.DB.Where("id = ?", 1).First(&role)
 
 		user := model.User{
-			Name:     "",
+			Name:     req.Name,
 			Email:    req.Email,
 			Password: "",
 		}
+
 		user.Roles = append(user.Roles, &role)
+
 		if result := ac.DB.Create(&user); result.Error != nil {
 			resp.Code = http.StatusBadGateway
 			resp.Message = result.Error.Error()
@@ -42,7 +44,22 @@ func (ac *AuthCtrl) Register(ctx *gin.Context) {
 			salt := []byte(fmt.Sprintf("user_%d", user.ID))
 			user.Password = utils.HashFunc(req.Password, salt)
 			ac.DB.Save(user)
-			resp.Data = user
+
+			var roles []map[string]interface{}
+
+			for _, role := range user.Roles {
+				roles = append(roles, gin.H{
+					"name":        role.Name,
+					"id":          role.ID,
+					"description": role.Description.String,
+				})
+			}
+
+			resp.Data = gin.H{
+				"name":  user.Name,
+				"email": user.Email,
+				"roles": roles,
+			}
 		}
 	}
 
@@ -62,13 +79,28 @@ func (ac *AuthCtrl) Login(ctx *gin.Context) {
 			Preload("Roles").
 			Where("email = ?", req.Email).
 			First(&user)
+
 		if userRes.Error != nil {
 			resp.Code = http.StatusNotFound
 			resp.Message = "user tidak terdaftar"
 		} else {
 			salt := []byte(fmt.Sprintf("user_%d", user.ID))
 			if utils.PasswordsMatch(user.Password, req.Password, salt) {
-				resp.Data = user
+				var roles []map[string]interface{}
+
+				for _, role := range user.Roles {
+					roles = append(roles, gin.H{
+						"name":        role.Name,
+						"id":          role.ID,
+						"description": role.Description.String,
+					})
+				}
+
+				resp.Data = gin.H{
+					"name":  user.Name,
+					"email": user.Email,
+					"roles": roles,
+				}
 			} else {
 				resp.Code = http.StatusNotFound
 				resp.Message = "password salah"
