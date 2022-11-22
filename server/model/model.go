@@ -2,6 +2,7 @@ package model
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 
 	"gorm.io/gorm"
@@ -31,4 +32,17 @@ func Init(db *gorm.DB) {
 		{Name: "Admin", Description: sql.NullString{String: "Administration User", Valid: true}},
 	}
 	db.Create(&roles)
+}
+
+func Purge(db *gorm.DB, dbName string) {
+	queryDrop := fmt.Sprintf("DROP DATABASE `%s`", dbName)
+	queryCreate := fmt.Sprintf("CREATE SCHEMA `%s`", dbName)
+	// db.Exec(queryDrop)
+
+	db.Connection(func(tx *gorm.DB) error {
+		tx.Exec(queryDrop)
+		tx.Exec(queryCreate)
+
+		return nil
+	})
 }

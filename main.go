@@ -21,14 +21,14 @@ func runServer(db *gorm.DB) {
 	r.Run()
 }
 
-func migrate(mode string, db *gorm.DB) {
+func migrate(mode string, db *gorm.DB, env map[string]string) {
 	// function call migration script (create/delete table).
 	switch mode {
 	case "init":
 		// create assosiative table with migration
 		model.Init(db)
 	case "down":
-		fmt.Println("Migrate Down")
+		model.Purge(db, env["DB_DATABASE"])
 	default:
 		log.Fatalln("\nUnknown mode. Mode available: \n\t- init (init database) \n\t- down (delete data in database)")
 	}
@@ -41,7 +41,14 @@ func initDB(env map[string]string) *gorm.DB {
 	pass := env["DB_PASSWORD"]
 	dbname := env["DB_DATABASE"]
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", user, pass, host, port, dbname)
+	dsn := fmt.Sprintf(
+		"%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		user,
+		pass,
+		host,
+		port,
+		dbname,
+	)
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 
 	if err != nil {
@@ -74,9 +81,9 @@ func main() {
 	switch command {
 	case "migrate":
 		if len(os.Args) > 2 {
-			migrate(os.Args[2], db)
+			migrate(os.Args[2], db, envData)
 		} else {
-			migrate("up", db)
+			migrate("up", db, envData)
 		}
 	case "serve":
 		fallthrough
